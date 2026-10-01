@@ -66,14 +66,51 @@
           </svg>
           <span class="font-bold text-xl tracking-tight">ระบบเฝ้าระวังทางระบาดวิทยา</span>
         </div>
-        <div class="flex items-center">
-          <span class="text-sm text-blue-200" id="lastUpdated">อัปเดตล่าสุด: กำลังรอข้อมูล</span>
+        <div class="flex items-center space-x-3">
+          <!-- Live Status Indicator Pill -->
+          <div id="dataSourceBadge" class="hidden sm:inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md bg-blue-900/60 border border-blue-400/30 text-blue-100 shadow-sm transition-all duration-300">
+            <span id="dataSourceDot" class="w-2 h-2 rounded-full mr-2 bg-amber-400 animate-ping"></span>
+            <span id="dataSourceText">โหมดข้อมูลตัวอย่าง (Sandbox Mode)</span>
+          </div>
+          <span class="text-xs sm:text-sm text-blue-200" id="lastUpdated">อัปเดตล่าสุด: กำลังรอข้อมูล</span>
         </div>
       </div>
     </div>
   </nav>
 
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Enterprise Notice Banner (Dynamic & Ultra-Clean) -->
+    <div id="apiStatusBanner" class="hidden mb-6 p-4 rounded-2xl border transition-all duration-500 shadow-sm relative overflow-hidden backdrop-blur-md">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-start space-x-3.5">
+          <div id="bannerIconWrapper" class="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 flex-shrink-0 mt-0.5">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <h4 id="bannerTitle" class="text-sm font-bold text-gray-900">กำลังแสดงผลในโหมดจำลอง (Simulated Sandbox Data)</h4>
+              <span id="bannerTag" class="px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider rounded-md bg-amber-100 text-amber-800 border border-amber-200">Demo Environment</span>
+            </div>
+            <p id="bannerDesc" class="text-xs text-gray-600 mt-1 leading-relaxed">
+              Open Data API มีการจำกัดสิทธิ์การเข้าถึง (403 Forbidden / ต้องใช้ API Key) ระบบจึงเปิดใช้งานชุดข้อมูลจำลองเสมือนจริงแบบเรียลไทม์ 500 เรคคอร์ด เพื่อให้คุณสามารถวิเคราะห์แดชบอร์ด แผนที่ และกราฟแนวโน้มได้อย่างต่อเนื่อง
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2 flex-shrink-0 self-end sm:self-center">
+          <button onclick="document.getElementById('apiKeyInput').focus(); document.getElementById('apiKeyInput').scrollIntoView({behavior: 'smooth', block: 'center'});" 
+            class="px-3.5 py-1.5 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-lg border border-gray-200 shadow-sm transition-all hover:border-gray-300">
+            ใส่ API Key
+          </button>
+          <button onclick="document.getElementById('apiStatusBanner').classList.add('hidden')" 
+            class="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100/60 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Controls & Upload Section -->
     <div
@@ -298,31 +335,45 @@
       if (!container) return;
 
       const toast = document.createElement('div');
-      toast.className = `px-4 py-3 rounded-lg shadow-lg text-white text-sm transition-all duration-500 transform translate-y-4 opacity-0 flex items-center space-x-2 pointer-events-auto`;
+      // Glassmorphism Floating Toast Card
+      toast.className = `px-4 py-3.5 rounded-xl shadow-2xl backdrop-blur-xl border text-sm transition-all duration-500 transform translate-y-4 opacity-0 flex items-center space-x-3 pointer-events-auto max-w-md`;
 
+      let iconSvg = '';
       if (type === 'error') {
-        toast.classList.add('bg-red-500');
+        toast.className += ' bg-red-950/90 text-red-100 border-red-500/40 shadow-red-950/50';
+        iconSvg = `<div class="p-1 rounded-full bg-red-500/20 text-red-400 flex-shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>`;
       } else if (type === 'success') {
-        toast.classList.add('bg-green-500');
+        toast.className += ' bg-emerald-950/90 text-emerald-100 border-emerald-500/40 shadow-emerald-950/50';
+        iconSvg = `<div class="p-1 rounded-full bg-emerald-500/20 text-emerald-400 flex-shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        </div>`;
       } else if (type === 'warning') {
-        toast.classList.add('bg-yellow-500');
+        toast.className += ' bg-amber-950/90 text-amber-100 border-amber-500/40 shadow-amber-950/50';
+        iconSvg = `<div class="p-1 rounded-full bg-amber-500/20 text-amber-400 flex-shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        </div>`;
       } else {
-        toast.classList.add('bg-blue-500');
+        toast.className += ' bg-slate-900/90 text-slate-100 border-blue-500/40 shadow-slate-950/50';
+        iconSvg = `<div class="p-1 rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>`;
       }
 
-      toast.innerHTML = `<span>${message}</span>`;
+      toast.innerHTML = `${iconSvg}<div class="flex-1 font-medium leading-snug">${message}</div>`;
       container.appendChild(toast);
 
-      // Animate in
+      // Animate in with smooth ease
       requestAnimationFrame(() => {
         toast.classList.remove('translate-y-4', 'opacity-0');
       });
 
-      // Remove after 5 seconds
+      // Remove after 6 seconds
       setTimeout(() => {
-        toast.classList.add('opacity-0');
+        toast.classList.add('opacity-0', 'translate-y-2');
         setTimeout(() => toast.remove(), 500);
-      }, 5000);
+      }, 6000);
     }
 
     // ฟังก์ชันอ่านไฟล์ Excel
@@ -678,6 +729,53 @@
     }
 
     // --- Mock Data Generator for Testing ---
+    
+    // Helper to dynamically switch status UI between Live API & Sandbox Mock
+    function updateSystemStatusBadge(mode, message = '') {
+      const badge = document.getElementById('dataSourceBadge');
+      const dot = document.getElementById('dataSourceDot');
+      const text = document.getElementById('dataSourceText');
+      const banner = document.getElementById('apiStatusBanner');
+      const bannerTitle = document.getElementById('bannerTitle');
+      const bannerTag = document.getElementById('bannerTag');
+      const bannerDesc = document.getElementById('bannerDesc');
+      const bannerIconWrapper = document.getElementById('bannerIconWrapper');
+
+      if (!badge) return;
+
+      if (mode === 'live') {
+        badge.className = 'hidden sm:inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md bg-emerald-900/60 border border-emerald-400/40 text-emerald-100 shadow-sm transition-all duration-300';
+        dot.className = 'w-2 h-2 rounded-full mr-2 bg-emerald-400 animate-pulse';
+        text.textContent = 'เชื่อมต่อฐานข้อมูลจริง (Live Production API)';
+
+        if (banner) {
+          banner.classList.remove('hidden');
+          banner.className = 'mb-6 p-4 rounded-2xl border border-emerald-200/80 bg-emerald-50/80 transition-all duration-500 shadow-sm relative overflow-hidden backdrop-blur-md';
+          bannerTitle.textContent = 'เชื่อมต่อฐานข้อมูลกลางภาครัฐสำเร็จ (Live Data Synced)';
+          bannerTitle.className = 'text-sm font-bold text-emerald-950';
+          bannerTag.textContent = 'Live Production';
+          bannerTag.className = 'px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300';
+          bannerDesc.textContent = `ระบบกำลังประมวลผลข้อมูลจริงจาก Open Data API เรียบร้อยแล้ว (${message || 'พร้อมใช้งาน'})`;
+          bannerIconWrapper.className = 'p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 flex-shrink-0 mt-0.5';
+        }
+      } else if (mode === 'mock') {
+        badge.className = 'hidden sm:inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md bg-amber-950/60 border border-amber-400/40 text-amber-200 shadow-sm transition-all duration-300';
+        dot.className = 'w-2 h-2 rounded-full mr-2 bg-amber-400 animate-pulse';
+        text.textContent = 'โหมดทดสอบจำลอง (Sandbox Mode)';
+
+        if (banner) {
+          banner.classList.remove('hidden');
+          banner.className = 'mb-6 p-4 rounded-2xl border border-amber-200/80 bg-amber-50/90 transition-all duration-500 shadow-sm relative overflow-hidden backdrop-blur-md';
+          bannerTitle.textContent = 'สลับเข้าสู่โหมดวิเคราะห์จำลอง (Simulated Analytics Sandbox)';
+          bannerTitle.className = 'text-sm font-bold text-amber-950';
+          bannerTag.textContent = 'Sandbox Active';
+          bannerTag.className = 'px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider rounded-md bg-amber-100 text-amber-800 border border-amber-300';
+          bannerDesc.textContent = message || 'API ปลายทางมีการเข้ารหัสหรือจำกัดสิทธิ์ (HTTP 403) ระบบจึงสลับมาใช้โมเดลข้อมูลสังเคราะห์ที่มีโครงสร้างสถิติสมบูรณ์ เพื่อให้สามารถทดลองใช้งานแดชบอร์ด แผนที่ และกราฟได้โดยไม่ติดขัด';
+          bannerIconWrapper.className = 'p-2.5 rounded-xl bg-amber-500/15 text-amber-600 flex-shrink-0 mt-0.5';
+        }
+      }
+    }
+
     function loadMockDataFn() {
       const provinces = ['กรุงเทพมหานคร', 'เชียงใหม่', 'ภูเก็ต', 'ชลบุรี', 'ขอนแก่น', 'นครราชสีมา'];
       const mockRows = [];
@@ -699,6 +797,7 @@
       currentData = normalizeData(mockRows);
       updateDashboard();
       showSuccessMessage(currentData.length);
+      updateSystemStatusBadge('mock', 'ระบบกำลังแสดงผลข้อมูลตัวอย่าง 500 เรคคอร์ด เพื่อการทดสอบวิเคราะห์และสาธิตฟังก์ชันงาน');
     }
 
     document.getElementById('loadMockData').addEventListener('click', function () {
@@ -784,7 +883,8 @@
           currentData = normalizeData(successResult);
           updateDashboard();
           showSuccessMessage(currentData.length);
-          showNotification('โหลดข้อมูลจาก API สำเร็จ (' + currentData.length + ' รายการ)', 'success');
+          updateSystemStatusBadge('live', `${currentData.length} เรคคอร์ด`);
+          showNotification('เชื่อมต่อ API ฐานข้อมูลกลางสำเร็จ: ประมวลผล ' + currentData.length + ' รายการ', 'success');
         } else {
           throw (lastError || new Error('ไม่สามารถดึงข้อมูลจาก API ได้ (ติด CORS/ต้องการ API-Key)'));
         }
@@ -794,10 +894,10 @@
         let errorMsg = error.message;
         if (error.name === 'AbortError') errorMsg = 'หมดเวลารอข้อมูล (Timeout)';
 
-        showNotification(`API ต้องใช้ Key หรือติดการเข้าถึง (${errorMsg}) กำลังแสดงข้อมูลตัวอย่าง`, 'warning');
-
-        // Fallback: ใช้ Mock Data ให้กราฟและแผนที่ทำงานได้ทันที
+        // สลับเข้าสู่ Sandbox อย่างมืออาชีพ
         loadMockDataFn();
+        updateSystemStatusBadge('mock', `API ปลายทางปฏิเสธการเชื่อมต่อ (${errorMsg}) ระบบได้สลับเข้าสู่ชุดข้อมูลจำลองความละเอียดสูง (Sandbox Data) อัตโนมัติ`);
+        showNotification(`สลับสู่โหมดจำลอง (Sandbox Mode): API ปลายทางติดการเข้าถึง (${errorMsg})`, 'warning');
       } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;
