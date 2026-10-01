@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thailand Weather & AQI Dashboard</title>
+  <!-- Google Fonts: Sarabun & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js for weather forecast trends -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Sarabun', 'Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#0284c7',
+              600: '#0369a1',
+              900: '#0c4a6e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(56, 189, 248, 0.3);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(56, 189, 248, 0.6);
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.72);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.6);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-sky-500 selection:text-white">
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-30 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20">
+          <i data-lucide="cloud-sun-rain" class="w-6 h-6 text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-indigo-300">
+            ThaiWeather Live
+          </h1>
+          <p class="text-xs text-slate-400 hidden sm:block">สภาพอากาศ & คุณภาพอากาศแบบเรียลไทม์</p>
+        </div>
+      </div>
+
+      <!-- Search & Geolocation buttons -->
+      <div class="flex items-center gap-2 flex-1 max-w-md justify-end">
+        <div class="relative w-full max-w-xs">
+          <input 
+            type="text" 
+            id="searchInput"
+            placeholder="ค้นหาจังหวัด / อำเภอ..." 
+            class="w-full bg-slate-900 border border-slate-700/80 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all"
+          >
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+          <!-- Autocomplete results dropdown -->
+          <div id="searchResults" class="hidden absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden z-50 max-h-60 overflow-y-auto"></div>
+        </div>
+
+        <button 
+          id="btnGeoLocation" 
+          title="ใช้ตำแหน่งปัจจุบัน" 
+          class="p-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-sky-400 hover:text-sky-300 transition-all active:scale-95"
+        >
+          <i data-lucide="crosshair" class="w-4 h-4"></i>
+        </button>
+
+        <button 
+          id="btnRefresh" 
+          title="รีเฟรชข้อมูล" 
+          class="p-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-300 hover:text-white transition-all active:scale-95"
+        >
+          <i data-lucide="refresh-cw" id="refreshIcon" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Quick Province Pills -->
+  <div class="border-b border-slate-800/50 bg-slate-900/40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
+      <div class="flex items-center gap-2 overflow-x-auto no-scrollbar text-xs">
+        <span class="text-slate-400 flex items-center gap-1 font-medium whitespace-nowrap mr-1">
+          <i data-lucide="map-pin" class="w-3.5 h-3.5 text-sky-400"></i> เมืองหลัก:
+        </span>
+        <button class="city-pill px-3 py-1.5 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/30 hover:bg-sky-500/30 whitespace-nowrap transition" data-name="กรุงเทพมหานคร" data-lat="13.7563" data-lon="100.5018">กรุงเทพฯ</button>
+        <button class="city-pill px-3 py-1.5 rounded-lg bg-slate-800/80 text-slate-300 border border-slate-700 hover:border-sky-500/40 whitespace-nowrap transition" data-name="ขอนแก่น" data-lat="16.4322" data-lon="102.8236">ขอนแก่น</button>
+        <button class="city-pill px-3 py-1.5 rounded-lg bg-slate-800/80 text-slate-300 border border-slate-700 hover:border-sky-500/40 whitespace-nowrap transition" data-name="เชียงใหม่" data-lat="18.7883" data-lon="98.9853">เชียงใหม่</button>
+        <button class="city-pill px-3 py-1.5 rounded-lg bg-slate-800/80 text-slate-300 border border-slate-700 hover:border-sky-500/40 whitespace-nowrap transition" data-name="ภูเก็ต" data-lat="7.8804" data-lon="98.3923">ภูเก็ต</button>
+        <button class="city-pill px-3 py-1.5 rounded-lg bg-slate-800/80 text-slate-300 border border-slate-700 hover:border-sky-500/40 whitespace-nowrap transition" data-name="ชลบุรี" data-lat="13.3611" data-lon="100.9847">พัทยา / ชลบุรี</button>
+        <button class="city-pill px-3 py-1.5 rounded-lg bg-slate-800/80 text-slate-300 border border-slate-700 hover:border-sky-500/40 whitespace-nowrap transition" data-name="นครราชสีมา" data-lat="14.9799" data-lon="102.0978">โคราช</button>
+        <button class="city-pill px-3 py-1.5 rounded-lg bg-slate-800/80 text-slate-300 border border-slate-700 hover:border-sky-500/40 whitespace-nowrap transition" data-name="สงขลา (หาดใหญ่)" data-lat="7.0084" data-lon="100.4767">หาดใหญ่</button>
+        <button class="city-pill px-3 py-1.5 rounded-lg bg-slate-800/80 text-slate-300 border border-slate-700 hover:border-sky-500/40 whitespace-nowrap transition" data-name="อุบลราชธานี" data-lat="15.2448" data-lon="104.8473">อุบลราชธานี</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Banner Container -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+    <div class="bg-slate-900 border border-sky-500 text-slate-200 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3">
+      <i data-lucide="info" class="w-5 h-5 text-sky-400"></i>
+      <span id="toastMsg" class="text-sm">กำลังโหลดข้อมูล...</span>
+    </div>
+  </div>
+
+  <!-- Main Dashboard Content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Loading Skeleton Overlay -->
+    <div id="loadingOverlay" class="hidden text-center py-12">
+      <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-sky-500 border-t-transparent"></div>
+      <p class="mt-4 text-sm text-slate-400">กำลังดึงข้อมูลสภาพอากาศล่าสุด...</p>
+    </div>
+
+    <!-- Main Weather Grid -->
+    <div id="dashboardContent" class="space-y-6">
+      
+      <!-- Top Row: Main Highlights & Air Quality -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Primary Weather Card (2 cols on desktop) -->
+        <div class="lg:col-span-2 glass-panel rounded-3xl p-6 sm:p-8 relative overflow-hidden flex flex-col justify-between shadow-2xl">
+          <div class="absolute -right-12 -top-12 w-64 h-64 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+          <div>
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span id="placeName" class="text-2xl sm:text-3xl font-bold tracking-tight text-white">กรุงเทพมหานคร</span>
+                  <span class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-md border border-slate-700">ไทย</span>
+                </div>
+                <p id="localTime" class="text-sm text-slate-400 mt-0.5">อัปเดต: กำลังคำนวณ...</p>
+              </div>
+              <div id="weatherBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700 text-sky-300 text-sm">
+                <i data-lucide="sun" class="w-4 h-4"></i>
+                <span id="weatherText">มีเมฆบางส่วน</span>
+              </div>
+            </div>
+
+            <!-- Temperature Big Display -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between my-4 gap-6">
+              <div class="flex items-baseline">
+                <span id="currentTemp" class="text-6xl sm:text-7xl font-extrabold tracking-tighter text-white">32</span>
+                <span class="text-3xl font-light text-sky-400 ml-1">°C</span>
+                <div class="ml-6 flex flex-col justify-center">
+                  <span class="text-xs text-slate-400 uppercase tracking-wider">รู้สึกเหมือน</span>
+                  <span id="apparentTemp" class="text-lg font-semibold text-slate-200">36°C</span>
+                </div>
+              </div>
+
+              <!-- Weather Icon Graphic -->
+              <div class="flex items-center gap-4">
+                <div id="weatherIconContainer" class="w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center rounded-2xl bg-slate-800/60 border border-slate-700/50 shadow-inner">
+                  <i data-lucide="sun" class="w-12 h-12 text-amber-400 animate-pulse"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Stat Metrics inside hero -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 border-t border-slate-800/80">
+            <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+              <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+                <i data-lucide="droplets" class="w-3.5 h-3.5 text-sky-400"></i> ความชื้นสัมพัทธ์
+              </div>
+              <p id="humidityVal" class="text-lg font-bold text-slate-100">72 %</p>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+              <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+                <i data-lucide="wind" class="w-3.5 h-3.5 text-teal-400"></i> แรงลม
+              </div>
+              <p id="windVal" class="text-lg font-bold text-slate-100">12 กม./ชม.</p>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+              <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+                <i data-lucide="cloud-rain" class="w-3.5 h-3.5 text-blue-400"></i> โอกาสเกิดฝน
+              </div>
+              <p id="rainProbVal" class="text-lg font-bold text-slate-100">20 %</p>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+              <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+                <i data-lucide="sun-medium" class="w-3.5 h-3.5 text-amber-400"></i> ดัชนี UV
+              </div>
+              <p id="uvVal" class="text-lg font-bold text-slate-100">7 (สูง)</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Air Quality (AQI & PM2.5) Card -->
+        <div class="glass-panel rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-2xl border border-slate-800">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2">
+                <div class="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+                  <i data-lucide="activity" class="w-5 h-5"></i>
+                </div>
+                <h3 class="font-bold text-slate-200">คุณภาพอากาศ (AQI)</h3>
+              </div>
+              <span class="text-xs text-slate-400">Open-Meteo AQI</span>
+            </div>
+
+            <!-- AQI Gauge Banner -->
+            <div id="aqiBanner" class="mt-4 p-5 rounded-2xl bg-emerald-950/40 border border-emerald-800/40 flex items-center justify-between">
+              <div>
+                <span class="text-xs text-emerald-300 font-medium">ระดับคุณภาพ</span>
+                <p id="aqiLevelText" class="text-xl font-bold text-emerald-400">ดีมาก</p>
+                <p id="aqiAdviceText" class="text-xs text-slate-300 mt-1 max-w-[180px]">อากาศบริสุทธิ์ สามารถทำกิจกรรมกลางแจ้งได้ตามปกติ</p>
+              </div>
+              <div class="text-right">
+                <span class="text-xs text-slate-400">AQI ดัชนี</span>
+                <div id="aqiNumber" class="text-4xl font-extrabold text-emerald-300">28</div>
+              </div>
+            </div>
+
+            <!-- Detailed Particulate Matter -->
+            <div class="grid grid-cols-2 gap-3 mt-5">
+              <div class="bg-slate-900/60 border border-slate-800/80 p-3 rounded-xl">
+                <span class="text-xs text-slate-400">ฝุ่น PM2.5</span>
+                <p id="pm25Val" class="text-lg font-bold text-slate-100 mt-0.5">14.2 <span class="text-xs font-normal text-slate-400">µg/m³</span></p>
+              </div>
+              <div class="bg-slate-900/60 border border-slate-800/80 p-3 rounded-xl">
+                <span class="text-xs text-slate-400">ฝุ่น PM10</span>
+                <p id="pm10Val" class="text-lg font-bold text-slate-100 mt-0.5">25.0 <span class="text-xs font-normal text-slate-400">µg/m³</span></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sun Schedule Section -->
+          <div class="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+            <div class="flex items-center gap-2">
+              <i data-lucide="sunrise" class="w-4 h-4 text-amber-400"></i>
+              <div>
+                <div>ขึ้น</div>
+                <div id="sunriseVal" class="font-semibold text-slate-200">06:08 น.</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <i data-lucide="sunset" class="w-4 h-4 text-orange-400"></i>
+              <div>
+                <div>ตก</div>
+                <div id="sunsetVal" class="font-semibold text-slate-200">18:15 น.</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <i data-lucide="gauge" class="w-4 h-4 text-sky-400"></i>
+              <div>
+                <div>ความกดอากาศ</div>
+                <div id="pressureVal" class="font-semibold text-slate-200">1012 hPa</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Middle Row: 24-Hour Temperature & Rain Trend Interactive Chart -->
+      <div class="glass-panel rounded-3xl p-6 shadow-2xl border border-slate-800">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800/80 gap-3">
+          <div>
+            <h3 class="text-lg font-bold text-slate-200 flex items-center gap-2">
+              <i data-lucide="line-chart" class="w-5 h-5 text-sky-400"></i>
+              แนวโน้ม 24 ชั่วโมงข้างหน้า
+            </h3>
+            <p class="text-xs text-slate-400 mt-0.5">เส้นกราฟอุณหภูมิ (°C) และความน่าจะเป็นของปริมาณฝน (%)</p>
+          </div>
+          <div class="flex items-center gap-4 text-xs">
+            <span class="flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded-full bg-sky-400"></span> อุณหภูมิ (°C)
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded-full bg-indigo-400"></span> โอกาสฝนตก (%)
+            </span>
+          </div>
+        </div>
+
+        <div class="mt-4 h-64 sm:h-72 w-full">
+          <canvas id="hourlyTrendChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Bottom Row: 7-Day Extended Forecast -->
+      <div class="glass-panel rounded-3xl p-6 shadow-2xl border border-slate-800">
+        <h3 class="text-lg font-bold text-slate-200 flex items-center gap-2 mb-4">
+          <i data-lucide="calendar" class="w-5 h-5 text-indigo-400"></i>
+          พยากรณ์อากาศล่วงหน้า 7 วัน
+        </h3>
+
+        <!-- Daily Cards Grid -->
+        <div id="dailyForecastContainer" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- Free API Credits / Details Footer Note -->
+      <div class="text-center py-4 text-xs text-slate-500">
+        ขับเคลื่อนด้วย Open-Meteo Open Data API (ฟรี ไม่ต้องใช้ Token, รองรับพิกัดประเทศไทย) 
+        • อัปเดตข้อมูลอัตโนมัติ
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    // State management
+    const state = {
+      lat: 13.7563,
+      lon: 100.5018,
+      locationName: "กรุงเทพมหานคร",
+      chartInstance: null
+    };
+
+    // WMO Weather Interpretation Codes (WW) to Thai Text & Icon
+    const wmoWeatherMap = {
+      0: { text: "ท้องฟ้าแจ่มใส", icon: "sun", color: "text-amber-400" },
+      1: { text: "ส่วนใหญ่แจ่มใส", icon: "sun-dim", color: "text-amber-300" },
+      2: { text: "มีเมฆบางส่วน", icon: "cloud-sun", color: "text-sky-300" },
+      3: { text: "เมฆครึ้ม", icon: "cloud", color: "text-slate-400" },
+      45: { text: "หมอกลง", icon: "cloud-fog", color: "text-slate-300" },
+      48: { text: "หมอกจัดมีน้ำค้างแข็ง", icon: "cloud-fog", color: "text-slate-300" },
+      51: { text: "ฝนปรอยเบาบาง", icon: "cloud-drizzle", color: "text-sky-400" },
+      53: { text: "ฝนปรอยปานกลาง", icon: "cloud-drizzle", color: "text-blue-400" },
+      55: { text: "ฝนปรอยหนัก", icon: "cloud-drizzle", color: "text-blue-500" },
+      61: { text: "ฝนตกเล็กน้อย", icon: "cloud-rain", color: "text-sky-400" },
+      63: { text: "ฝนตกปานกลาง", icon: "cloud-rain", color: "text-blue-500" },
+      65: { text: "ฝนตกหนัก", icon: "cloud-rain", color: "text-blue-600" },
+      80: { text: "ฝนซู่กระจาย", icon: "cloud-rain", color: "text-indigo-400" },
+      81: { text: "ฝนซู่ปานกลาง", icon: "cloud-rain", color: "text-indigo-500" },
+      82: { text: "ฝนตกหนักมาก", icon: "cloud-lightning", color: "text-purple-400" },
+      95: { text: "พายุฝนฟ้าคะนอง", icon: "cloud-lightning", color: "text-amber-500" },
+      96: { text: "พายุฝนฟ้าคะนองรุนแรง", icon: "cloud-lightning", color: "text-red-500" },
+      99: { text: "พายุลูกเห็บตก", icon: "cloud-hail", color: "text-rose-400" }
+    };
+
+    function getWeatherInfo(code) {
+      return wmoWeatherMap[code] || { text: "มีเมฆ", icon: "cloud", color: "text-sky-300" };
+    }
+
+    // Thai Day name helper
+    const thaiDays = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
+    const thaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      const msg = document.getElementById("toastMsg");
+      msg.textContent = message;
+      toast.classList.remove("opacity-0", "translate-y-20", "pointer-events-none");
+      setTimeout(() => {
+        toast.classList.add("opacity-0", "translate-y-20", "pointer-events-none");
+      }, 3500);
+    }
+
+    // Fetch Weather & Air Quality from Open-Meteo
+    async function fetchWeatherData(lat, lon, placeName) {
+      const overlay = document.getElementById("loadingOverlay");
+      const content = document.getElementById("dashboardContent");
+      const refreshIcon = document.getElementById("refreshIcon");
+
+      refreshIcon.classList.add("animate-spin");
+      overlay.classList.remove("hidden");
+      content.classList.add("opacity-50");
+
+      try {
+        // 1. Weather forecast endpoint
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,surface_pressure,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,precipitation_probability,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max,sunrise,sunset&timezone=Asia%2FBangkok&forecast_days=7`;
+
+        // 2. Air quality endpoint
+        const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=european_aqi,us_aqi,pm10,pm2_5&timezone=Asia%2FBangkok`;
+
+        const [weatherRes, aqiRes] = await Promise.all([
+          fetch(weatherUrl).then(r => r.json()),
+          fetch(aqiUrl).then(r => r.json()).catch(() => null)
+        ]);
+
+        if (!weatherRes || !weatherRes.current) {
+          throw new Error("ไม่สามารถเรียกดูข้อมูลสภาพอากาศได้");
+        }
+
+        updateDashboardUI(weatherRes, aqiRes, placeName);
+        showToast(`อัปเดตข้อมูล ${placeName} เรียบร้อยแล้ว`);
+      } catch (err) {
+        console.error("Fetch Error:", err);
+        showToast("เกิดข้อผิดพลาดในการดึงข้อมูล กรุณาลองใหม่อีกครั้ง");
+      } finally {
+        refreshIcon.classList.remove("animate-spin");
+        overlay.classList.add("hidden");
+        content.classList.remove("opacity-50");
+      }
+    }
+
+    // Update dashboard elements
+    function updateDashboardUI(weather, aqi, placeName) {
+      const cur = weather.current;
+      const daily = weather.daily;
+      const hourly = weather.hourly;
+
+      // Update location name
+      document.getElementById("placeName").textContent = placeName;
+      state.locationName = placeName;
+
+      // Current Time Formatter
+      const now = new Date();
+      const dateStr = `${thaiDays[now.getDay()]} ${now.getDate()} ${thaiMonths[now.getMonth()]} ${now.getFullYear() + 543} เวลา ${now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`;
+      document.getElementById("localTime").textContent = `ข้อมูล ณ วันที่: ${dateStr}`;
+
+      // Current temperature
+      document.getElementById("currentTemp").textContent = Math.round(cur.temperature_2m);
+      document.getElementById("apparentTemp").textContent = `${Math.round(cur.apparent_temperature)}°C`;
+      document.getElementById("humidityVal").textContent = `${cur.relative_humidity_2m} %`;
+      document.getElementById("windVal").textContent = `${cur.wind_speed_10m} กม./ชม.`;
+      document.getElementById("pressureVal").textContent = `${Math.round(cur.surface_pressure)} hPa`;
+
+      // Weather description & icon
+      const wInfo = getWeatherInfo(cur.weather_code);
+      document.getElementById("weatherText").textContent = wInfo.text;
+      
+      const iconContainer = document.getElementById("weatherIconContainer");
+      iconContainer.innerHTML = `<i data-lucide="${wInfo.icon}" class="w-12 h-12 ${wInfo.color} transition-all transform hover:scale-110"></i>`;
+
+      // UV Index & Rain prob from today's daily
+      const todayUv = daily.uv_index_max ? daily.uv_index_max[0] : 0;
+      let uvLevel = "ต่ำ";
+      if (todayUv >= 8) uvLevel = "สูงมาก";
+      else if (todayUv >= 6) uvLevel = "สูง";
+      else if (todayUv >= 3) uvLevel = "ปานกลาง";
+      document.getElementById("uvVal").textContent = `${todayUv.toFixed(1)} (${uvLevel})`;
+
+      const rainProb = daily.precipitation_probability_max ? daily.precipitation_probability_max[0] : 0;
+      document.getElementById("rainProbVal").textContent = `${rainProb} %`;
+
+      // Sunrise & Sunset
+      if (daily.sunrise && daily.sunrise[0]) {
+        const srDate = new Date(daily.sunrise[0]);
+        document.getElementById("sunriseVal").textContent = srDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + " น.";
+      }
+      if (daily.sunset && daily.sunset[0]) {
+        const ssDate = new Date(daily.sunset[0]);
+        document.getElementById("sunsetVal").textContent = ssDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + " น.";
+      }
+
+      // Air Quality
+      updateAQISection(aqi);
+
+      // Hourly Forecast Chart
+      renderHourlyChart(hourly);
+
+      // 7-day forecast cards
+      renderDailyForecast(daily);
+
+      // Re-trigger lucide icons render
+      lucide.createIcons();
+    }
+
+    // Compute Air Quality Index and UI styles
+    function updateAQISection(aqiData) {
+      const banner = document.getElementById("aqiBanner");
+      const aqiNumElem = document.getElementById("aqiNumber");
+      const aqiTextElem = document.getElementById("aqiLevelText");
+      const adviceElem = document.getElementById("aqiAdviceText");
+      const pm25Elem = document.getElementById("pm25Val");
+      const pm10Elem = document.getElementById("pm10Val");
+
+      if (!aqiData || !aqiData.current) {
+        aqiNumElem.textContent = "-";
+        aqiTextElem.textContent = "ไม่มีข้อมูล";
+        return;
+      }
+
+      const curAqi = aqiData.current;
+      const usAqi = curAqi.us_aqi || Math.round((curAqi.pm2_5 || 10) * 3);
+      const pm25 = curAqi.pm2_5 !== undefined ? curAqi.pm2_5.toFixed(1) : "-";
+      const pm10 = curAqi.pm10 !== undefined ? curAqi.pm10.toFixed(1) : "-";
+
+      pm25Elem.innerHTML = `${pm25} <span class="text-xs font-normal text-slate-400">µg/m³</span>`;
+      pm10Elem.innerHTML = `${pm10} <span class="text-xs font-normal text-slate-400">µg/m³</span>`;
+      aqiNumElem.textContent = usAqi;
+
+      // Color coding based on AQI standards
+      banner.className = "mt-4 p-5 rounded-2xl flex items-center justify-between border ";
+      if (usAqi <= 50) {
+        banner.classList.add("bg-emerald-950/40", "border-emerald-700/50");
+        aqiTextElem.textContent = "ดีมาก (Good)";
+        aqiTextElem.className = "text-xl font-bold text-emerald-400";
+        adviceElem.textContent = "คุณภาพอากาศดีมาก เหมาะแก่กิจกรรมกลางแจ้งทุกชนิด";
+      } else if (usAqi <= 100) {
+        banner.classList.add("bg-amber-950/40", "border-amber-700/50");
+        aqiTextElem.textContent = "ปานกลาง (Moderate)";
+        aqiTextElem.className = "text-xl font-bold text-amber-400";
+        adviceElem.textContent = "กลุ่มเสี่ยงควรลดระยะเวลาการทำกิจกรรมกลางแจ้งที่ใช้แรงมาก";
+      } else if (usAqi <= 150) {
+        banner.classList.add("bg-orange-950/40", "border-orange-700/50");
+        aqiTextElem.textContent = "เริ่มมีผลกระทบ (Unhealthy for Sensitive)";
+        aqiTextElem.className = "text-xl font-bold text-orange-400";
+        adviceElem.textContent = "ประชาชนทั่วไปและกลุ่มเสี่ยงควรสวมหน้ากากอนามัยป้องกันฝุ่น";
+      } else {
+        banner.classList.add("bg-rose-950/40", "border-rose-700/50");
+        aqiTextElem.textContent = "มีผลกระทบต่อสุขภาพ (Unhealthy)";
+        aqiTextElem.className = "text-xl font-bold text-rose-400";
+        adviceElem.textContent = "ควรหลีกเลี่ยงกิจกรรมกลางแจ้ง และสวมหน้ากาก N95";
+      }
+    }
+
+    // Render 24-Hour Forecast Chart using Chart.js
+    function renderHourlyChart(hourly) {
+      if (!hourly || !hourly.time) return;
+
+      const currentHour = new Date().getHours();
+      // Slice next 24 data points starting from now
+      const labels = [];
+      const temps = [];
+      const rainProbs = [];
+
+      for (let i = currentHour; i < currentHour + 24 && i < hourly.time.length; i++) {
+        const timeObj = new Date(hourly.time[i]);
+        const hourStr = timeObj.getHours() + ":00";
+        labels.push(hourStr);
+        temps.push(Math.round(hourly.temperature_2m[i]));
+        rainProbs.push(hourly.precipitation_probability ? hourly.precipitation_probability[i] : 0);
+      }
+
+      const ctx = document.getElementById("hourlyTrendChart").getContext("2d");
+
+      if (state.chartInstance) {
+        state.chartInstance.destroy();
+      }
+
+      state.chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'อุณหภูมิ (°C)',
+              data: temps,
+              borderColor: '#38bdf8',
+              backgroundColor: 'rgba(56, 189, 248, 0.1)',
+              borderWidth: 2.5,
+              fill: true,
+              tension: 0.35,
+              yAxisID: 'yTemp',
+              pointRadius: 3,
+              pointBackgroundColor: '#38bdf8'
+            },
+            {
+              label: 'โอกาสเกิดฝน (%)',
+              data: rainProbs,
+              borderColor: '#818cf8',
+              backgroundColor: 'rgba(129, 140, 248, 0.15)',
+              borderWidth: 2,
+              borderDash: [4, 4],
+              fill: false,
+              tension: 0.3,
+              yAxisID: 'yRain',
+              pointRadius: 2,
+              pointBackgroundColor: '#818cf8'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.9)',
+              titleColor: '#e2e8f0',
+              bodyColor: '#e2e8f0',
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              borderWidth: 1,
+              padding: 10
+            }
+          },
+          scales: {
+            x: {
+              grid: {
+                color: 'rgba(255, 255, 255, 0.05)'
+              },
+              ticks: {
+                color: '#94a3b8',
+                font: { family: 'Sarabun', size: 11 }
+              }
+            },
+            yTemp: {
+              type: 'linear',
+              position: 'left',
+              grid: {
+                color: 'rgba(255, 255, 255, 0.05)'
+              },
+              ticks: {
+                color: '#38bdf8',
+                callback: v => `${v}°`
+              }
+            },
+            yRain: {
+              type: 'linear',
+              position: 'right',
+              min: 0,
+              max: 100,
+              grid: {
+                display: false
+              },
+              ticks: {
+                color: '#818cf8',
+                callback: v => `${v}%`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Render 7-day extended forecast cards
+    function renderDailyForecast(daily) {
+      const container = document.getElementById("dailyForecastContainer");
+      container.innerHTML = "";
+
+      if (!daily || !daily.time) return;
+
+      daily.time.forEach((dateStr, idx) => {
+        const dateObj = new Date(dateStr);
+        const dayTitle = idx === 0 ? "วันนี้" : thaiDays[dateObj.getDay()];
+        const dateFormatted = `${dateObj.getDate()} ${thaiMonths[dateObj.getMonth()]}`;
+        const maxT = Math.round(daily.temperature_2m_max[idx]);
+        const minT = Math.round(daily.temperature_2m_min[idx]);
+        const rainChance = daily.precipitation_probability_max ? daily.precipitation_probability_max[idx] : 0;
+        const wInfo = getWeatherInfo(daily.weather_code[idx]);
+
+        const card = document.createElement("div");
+        card.className = "glass-card rounded-2xl p-4 flex flex-col items-center justify-between text-center border border-slate-800/80 hover:border-sky-500/40 transition hover:-translate-y-1 duration-200";
+        card.innerHTML = `
+          <div>
+            <span class="text-sm font-bold ${idx === 0 ? 'text-sky-400' : 'text-slate-200'}">${dayTitle}</span>
+            <span class="block text-[11px] text-slate-400">${dateFormatted}</span>
+          </div>
+
+          <div class="my-3 flex flex-col items-center">
+            <i data-lucide="${wInfo.icon}" class="w-8 h-8 ${wInfo.color} mb-1.5"></i>
+            <span class="text-xs text-slate-300 font-medium truncate max-w-[90px]">${wInfo.text}</span>
+          </div>
+
+          <div class="w-full pt-2 border-t border-slate-800/60 flex items-center justify-between text-xs">
+            <span class="text-rose-400 font-semibold">${maxT}°</span>
+            <span class="text-slate-500 text-[10px]">/</span>
+            <span class="text-sky-400 font-semibold">${minT}°</span>
+          </div>
+
+          <div class="mt-2 text-[11px] flex items-center gap-1 text-slate-400">
+            <i data-lucide="cloud-rain" class="w-3 h-3 text-blue-400"></i>
+            <span>${rainChance}%</span>
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+    }
+
+    // Quick province buttons click handler
+    document.querySelectorAll(".city-pill").forEach(button => {
+      button.addEventListener("click", () => {
+        // Toggle active pill styling
+        document.querySelectorAll(".city-pill").forEach(p => {
+          p.classList.remove("bg-sky-500/20", "text-sky-300", "border-sky-500/30");
+          p.classList.add("bg-slate-800/80", "text-slate-300", "border-slate-700");
+        });
+        button.classList.add("bg-sky-500/20", "text-sky-300", "border-sky-500/30");
+        button.classList.remove("bg-slate-800/80", "text-slate-300", "border-slate-700");
+
+        const name = button.getAttribute("data-name");
+        const lat = parseFloat(button.getAttribute("data-lat"));
+        const lon = parseFloat(button.getAttribute("data-lon"));
+        state.lat = lat;
+        state.lon = lon;
+        state.locationName = name;
+
+        fetchWeatherData(lat, lon, name);
+      });
+    });
+
+    // Refresh button
+    document.getElementById("btnRefresh").addEventListener("click", () => {
+      fetchWeatherData(state.lat, state.lon, state.locationName);
+    });
+
+    // Geolocation button
+    document.getElementById("btnGeoLocation").addEventListener("click", () => {
+      if (!navigator.geolocation) {
+        showToast("เบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง");
+        return;
+      }
+
+      showToast("กำลังระบุพิกัดตำแหน่งปัจจุบัน...");
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          state.lat = lat;
+          state.lon = lon;
+          
+          // Reverse geocode via Open-Meteo or generic name
+          let customName = `พิกัด (${lat.toFixed(2)}, ${lon.toFixed(2)})`;
+          try {
+            const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${lat.toFixed(2)}&count=1&language=th`).then(r => r.json());
+            if (geoRes && geoRes.results && geoRes.results[0]) {
+              customName = geoRes.results[0].name;
+            }
+          } catch(e) {}
+
+          state.locationName = customName;
+          fetchWeatherData(lat, lon, customName);
+        },
+        (error) => {
+          console.warn("Geolocation denied or error:", error);
+          showToast("ไม่สามารถเข้าถึงตำแหน่งได้ กรุณาอนุญาตสิทธิ์การเข้าถึงตำแหน่ง");
+        }
+      );
+    });
+
+    // Thai / Global City Search with Open-Meteo Geocoding
+    const searchInput = document.getElementById("searchInput");
+    const searchResults = document.getElementById("searchResults");
+    let searchTimeout = null;
+
+    searchInput.addEventListener("input", (e) => {
+      const query = e.target.value.trim();
+      clearTimeout(searchTimeout);
+
+      if (query.length < 2) {
+        searchResults.classList.add("hidden");
+        return;
+      }
+
+      searchTimeout = setTimeout(async () => {
+        try {
+          const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=th&format=json`);
+          const data = await res.json();
+
+          if (data && data.results && data.results.length > 0) {
+            searchResults.innerHTML = "";
+            data.results.forEach(item => {
+              const itemDiv = document.createElement("button");
+              itemDiv.className = "w-full text-left px-4 py-2.5 hover:bg-slate-800 flex items-center justify-between border-b border-slate-800/80 text-sm transition";
+              
+              const admin = item.admin1 ? ` (${item.admin1})` : "";
+              const country = item.country || "ไทย";
+
+              itemDiv.innerHTML = `
+                <div>
+                  <span class="font-medium text-slate-100">${item.name}</span>
+                  <span class="text-xs text-slate-400">${admin}</span>
+                </div>
+                <span class="text-xs text-sky-400 bg-sky-950/60 px-2 py-0.5 rounded border border-sky-800">${country}</span>
+              `;
+
+              itemDiv.addEventListener("click", () => {
+                state.lat = item.latitude;
+                state.lon = item.longitude;
+                state.locationName = item.name + admin;
+                searchInput.value = "";
+                searchResults.classList.add("hidden");
+                fetchWeatherData(item.latitude, item.longitude, state.locationName);
+              });
+
+              searchResults.appendChild(itemDiv);
+            });
+            searchResults.classList.remove("hidden");
+          } else {
+            searchResults.innerHTML = `<div class="p-3 text-xs text-slate-400 text-center">ไม่พบผลการค้นหา "${query}"</div>`;
+            searchResults.classList.remove("hidden");
+          }
+        } catch (err) {
+          console.error("Search error:", err);
+        }
+      }, 400);
+    });
+
+    // Close search dropdown on click outside
+    document.addEventListener("click", (e) => {
+      if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+        searchResults.classList.add("hidden");
+      }
+    });
+
+    // Window load initialisation
+    window.addEventListener("DOMContentLoaded", () => {
+      lucide.createIcons();
+      // Initial load Bangkok
+      fetchWeatherData(state.lat, state.lon, state.locationName);
+    });
+  </script>
+</body>
+</html>
