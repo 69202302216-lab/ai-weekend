@@ -117,7 +117,7 @@
       class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8 flex flex-col sm:flex-row justify-between items-center gap-4">
       <div class="w-full sm:w-auto">
         <h2 class="text-lg font-semibold text-gray-700 mb-2">นำเข้าข้อมูล (Data Import)</h2>
-        <p class="text-sm text-gray-500 mb-3">รองรับไฟล์ Excel (.xlsx) เช่น
+        <p class="text-sm text-gray-500 mb-3">รองรับไฟล์ Excel (.xlsx, .xls) หรือ CSV (.csv) เช่น
           <code>confirmed-cases-since-120465.xlsx</code></p>
         <div class="flex items-center justify-center w-full sm:w-96">
           <label for="excel-upload"
@@ -132,7 +132,7 @@
                 หรือลากไฟล์มาวาง</p>
               <p class="text-xs text-blue-500">XLSX, XLS (ไม่บันทึกลงเซิร์ฟเวอร์)</p>
             </div>
-            <input id="excel-upload" type="file" class="hidden" accept=".xlsx, .xls, .csv" />
+            <input id="excel-upload" type="file" accept=".xlsx, .xls, .csv" class="hidden" accept=".xlsx, .xls, .csv" />
           </label>
         </div>
       </div>
@@ -277,8 +277,20 @@
     <!-- Data Table (Preview) -->
     <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
       <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-semibold text-gray-800">ตารางข้อมูล (Data Preview)</h3>
-        <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">แสดง 10 รายการล่าสุด</span>
+        <div class="flex items-center space-x-2">
+          <h3 class="text-lg font-semibold text-gray-800">ตารางข้อมูล (Data Preview)</h3>
+          <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">แสดง 10 รายการล่าสุด</span>
+        </div>
+        <div class="flex items-center space-x-2 mt-2 sm:mt-0">
+          <button id="exportExcelBtn" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm transition flex items-center space-x-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            <span>ส่งออก Excel</span>
+          </button>
+          <button id="exportCsvBtn" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-sm transition flex items-center space-x-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            <span>ส่งออก CSV</span>
+          </button>
+        </div>
       </div>
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
@@ -799,6 +811,32 @@
       showSuccessMessage(currentData.length);
       updateSystemStatusBadge('mock', 'ระบบกำลังแสดงผลข้อมูลตัวอย่าง 500 เรคคอร์ด เพื่อการทดสอบวิเคราะห์และสาธิตฟังก์ชันงาน');
     }
+
+    
+    // Export Data (Excel & CSV) via SheetJS
+    function exportData(format = 'xlsx') {
+      if (!currentData || currentData.length === 0) {
+        showNotification('ไม่มีข้อมูลสำหรับส่งออก', 'warning');
+        return;
+      }
+
+      const cleanData = currentData.map(row => {
+        const item = { ...row };
+        delete item.parsedDate;
+        return item;
+      });
+
+      const ws = XLSX.utils.json_to_sheet(cleanData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Cases');
+
+      const fileName = `epidemiology_data_${new Date().toISOString().slice(0, 10)}.${format}`;
+      XLSX.writeFile(wb, fileName, { bookType: format });
+      showNotification(`ส่งออกไฟล์ ${fileName} สำเร็จ (${cleanData.length} แถว)`, 'success');
+    }
+
+    document.getElementById('exportExcelBtn').addEventListener('click', () => exportData('xlsx'));
+    document.getElementById('exportCsvBtn').addEventListener('click', () => exportData('csv'));
 
     document.getElementById('loadMockData').addEventListener('click', function () {
       loadMockDataFn();
